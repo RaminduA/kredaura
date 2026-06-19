@@ -11,8 +11,8 @@ deploy_frontend:
     - npm install -g vercel
   script:
     - echo "Deploying Kredaura frontend to Vercel..."
-    - echo "VERCEL_ORG_ID is set: ${VERCEL_ORG_ID:+yes}"
-    - echo "VERCEL_PROJECT_ID is set: ${VERCEL_PROJECT_ID:+yes}"
+    - if [ -n "$VERCEL_ORG_ID" ]; then echo "VERCEL_ORG_ID set"; else echo "VERCEL_ORG_ID missing"; exit 1; fi
+    - if [ -n "$VERCEL_PROJECT_ID" ]; then echo "VERCEL_PROJECT_ID set"; else echo "VERCEL_PROJECT_ID missing"; exit 1; fi
     - cd apps/web
     - vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
     - vercel build --prod --token="$VERCEL_TOKEN"
