@@ -1,0 +1,91 @@
+name: Mirror Main to GitLab
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  mirror:
+    name: Mirror GitHub main to GitLab main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitHub main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH for GitLab
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.GITLAB_SSH_PRIVATE_KEY }}" > ~/.ssh/gitlab_deploy_key
+          chmod 600 ~/.ssh/gitlab_deploy_key
+          ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+
+          cat > ~/.ssh/config <<EOF
+          Host gitlab.com
+            HostName gitlab.com
+            User git
+            IdentityFile ~/.ssh/gitlab_deploy_key
+            IdentitiesOnly yes
+          EOF
+
+      - name: Configure Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push main to GitLab
+        env:
+          GITLAB_SSH_REPO: ${{ secrets.GITLAB_SSH_REPO }}
+        run: |
+          echo "GitHub main commit:"
+          git rev-parse HEAD
+
+          git remote add gitlab "$GITLAB_SSH_REPO"
+
+          echo "Pushing GitHub main to GitLab main..."
+          git push gitlab main:main
+
+  notify-failure:
+    name: Create sync failure issue
+    needs: mirror
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Production mirror failed: GitHub main did not sync to GitLab";
+            const body = `
+            GitHub main was updated, but mirroring to GitLab failed.
+
+            Commit: ${context.sha}
+            Workflow: ${context.workflow}
+            Run URL: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+
+            Required action:
+            1. Check the mirror workflow logs.
+            2. Verify GITLAB_SSH_PRIVATE_KEY is valid.
+            3. Verify GITLAB_SSH_REPO is correct.
+            4. Verify the GitLab deploy key has write permission.
+            5. Verify the GitLab protected branch allows this deploy key to push.
+            6. Re-run the workflow after fixing the issue.
+
+            Production deployment from GitLab may not have started.
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ["deployment", "production", "gitlab-sync-failure"]
+            });

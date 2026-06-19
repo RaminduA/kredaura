@@ -1,0 +1,36 @@
+stages:
+  - deploy_frontend
+  - deploy_backend
+
+variables:
+  NODE_VERSION: "22"
+
+deploy_frontend:
+  stage: deploy_frontend
+  image: node:${NODE_VERSION}
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - npm install -g vercel
+  script:
+    - echo "Deploying Kredaura frontend to Vercel..."
+    - cd apps/web
+    - vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+    - vercel build --prod --token="$VERCEL_TOKEN"
+    - vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+  environment:
+    name: production
+    url: https://kredaura.com
+
+deploy_backend:
+  stage: deploy_backend
+  image: alpine:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "Triggering Kredaura backend deployment on Render..."
+    - curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+  environment:
+    name: production

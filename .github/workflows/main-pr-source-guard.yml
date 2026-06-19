@@ -1,0 +1,25 @@
+name: Main PR Source Guard
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-source-branch:
+    name: Main PR must come from dev
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check source branch
+        run: |
+          echo "Base branch: ${{ github.base_ref }}"
+          echo "Head branch: ${{ github.head_ref }}"
+
+          if [ "${{ github.head_ref }}" != "dev" ]; then
+            echo "Only PRs from 'dev' are allowed to merge into 'main'."
+            echo "Current source branch is '${{ github.head_ref }}'."
+            exit 1
+          fi
+
+          echo "Valid PR source branch."
