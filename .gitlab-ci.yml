@@ -7,9 +7,6 @@ deploy_frontend:
   image: node:22
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-  variables:
-    VERCEL_ORG_ID: "$VERCEL_ORG_ID"
-    VERCEL_PROJECT_ID: "$VERCEL_PROJECT_ID"
   before_script:
     - npm install -g vercel
   script:
