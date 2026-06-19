@@ -2,14 +2,14 @@ stages:
   - deploy_frontend
   - deploy_backend
 
-variables:
-  NODE_VERSION: "22"
-
 deploy_frontend:
   stage: deploy_frontend
-  image: node:${NODE_VERSION}
+  image: node:22
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+  variables:
+    VERCEL_ORG_ID: "$VERCEL_ORG_ID"
+    VERCEL_PROJECT_ID: "$VERCEL_PROJECT_ID"
   before_script:
     - npm install -g vercel
   script:
@@ -31,6 +31,6 @@ deploy_backend:
     - apk add --no-cache curl
   script:
     - echo "Triggering Kredaura backend deployment on Render..."
-    - curl -X POST "$RENDER_DEPLOY_HOOK_URL"
+    - curl --fail --show-error --silent -X POST "$RENDER_DEPLOY_HOOK_URL"
   environment:
     name: production
